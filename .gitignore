@@ -5,6 +5,8 @@ dist/
 build/
 .pnp
 .pnp.js
+*.zip
+*.rar
 
 # Environment variables
 .env
