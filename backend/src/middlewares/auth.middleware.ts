@@ -1,8 +1,6 @@
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// Extend Express Request interface to include user
 declare global {
     namespace Express {
         interface Request {
@@ -11,28 +9,40 @@ declare global {
     }
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+const JWT_SECRET = process.env.JWT_SECRET;
 
-    if (!token) {
-        return res.status(401).json({ message: 'Token de autenticação não fornecido' });
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET não definido no arquivo .env');
+}
+
+export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Token de autenticação não fornecido.' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret', (err: any, user: any) => {
-        if (err) {
-            return res.status(403).json({ message: 'Token inválido ou expirado' });
-        }
-        req.user = user;
-        next();
-    });
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        return next();
+    } catch (error) {
+        return res.status(403).json({ message: 'Token inválido ou expirado.' });
+    }
 };
 
 export const requireRole = (roles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (!req.user || !roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'Acesso não autorizado para este perfil' });
+        if (!req.user) {
+            return res.status(401).json({ message: 'Usuário não autenticado.' });
         }
-        next();
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ message: 'Acesso não autorizado para este perfil.' });
+        }
+
+        return next();
     };
 };

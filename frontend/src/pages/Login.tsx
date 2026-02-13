@@ -1,92 +1,102 @@
-
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
-const Login: React.FC = () => {
+import { authApi } from '../services/api.service';
+import { useAuth } from '../contexts/AuthContext';
+
+const Login = () => {
+    const navigate = useNavigate();
+    const { login } = useAuth();
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const { login } = useAuth();
-    const navigate = useNavigate();
+
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
+
+        if (!email.trim() || !password.trim()) {
+            toast.error('Informe e-mail e senha.');
+            return;
+        }
+
+        setLoading(true);
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
+            const response = await authApi.login(email, password);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
+            if (!response?.token || !response?.user) {
+                toast.error('Resposta inválida do servidor.');
+                return;
             }
 
-            login(data.token, data.user);
-            navigate('/dashboard'); // Redireciona para o painel
+            login(response.token, response.user);
+
+            toast.success('Login realizado com sucesso!');
+            navigate('/dashboard');
         } catch (err: any) {
-            setError(err.message);
+            console.error(err);
+
+            toast.error(err.message || 'Erro ao realizar login.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-                <div className="flex justify-center mb-6">
-                    <img src="/logo.png" alt="Wfibra RH Logo" className="h-16 object-contain" />
-                </div>
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Gestão RH</h2>
+        <div className="min-h-screen flex items-center justify-center bg-[#f3f3f3] px-4">
+            <div className="bg-white w-full max-w-md rounded-xl shadow-lg p-8">
+                <h1 className="text-2xl font-bold text-gray-800 mb-2 text-center">
+                    Gestão RH
+                </h1>
 
-                {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                        {error}
-                    </div>
-                )}
+                <p className="text-gray-500 text-sm text-center mb-6">
+                    Faça login para acessar o sistema
+                </p>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            E-mail
+                        </label>
                         <input
                             type="email"
-                            className="w-full px-3 py-2 border rounded shadow-sm focus:outline-none focus:border-blue-500"
+                            placeholder="Digite seu e-mail"
+                            className="w-full border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
+                            autoComplete="username"
                         />
                     </div>
 
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Senha
+                        </label>
                         <input
                             type="password"
-                            className="w-full px-3 py-2 border rounded shadow-sm focus:outline-none focus:border-blue-500"
+                            placeholder="Digite sua senha"
+                            className="w-full border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
+                            autoComplete="current-password"
                         />
-                        <div className="text-right mt-1">
-                            <a href="#" onClick={(e) => { e.preventDefault(); alert('Por favor, entre em contato com o administrador para redefinir sua senha.'); }} className="text-sm text-blue-600 hover:text-blue-800">
-                                Esqueceu a senha?
-                            </a>
-                        </div>
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none"
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium transition disabled:opacity-60"
                     >
-                        Entrar
+                        {loading ? 'Entrando...' : 'Entrar'}
                     </button>
-
-                    <p className="mt-4 text-center text-sm text-gray-500">
-                        Seu primeiro acesso? Entre com as credenciais enviadas pelo Adm.
-                    </p>
                 </form>
+
+                <p className="text-xs text-gray-400 text-center mt-6">
+                    Wfibra RH © {new Date().getFullYear()}
+                </p>
             </div>
         </div>
     );

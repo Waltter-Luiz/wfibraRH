@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 // Load .env
-const envPath = path.resolve(__dirname, '../../../../.env');
+const envPath = path.resolve(__dirname, '../../../.env');
 if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
 } else {

@@ -6,10 +6,18 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import path from 'path';
 
+import fs from 'fs';
+
 // Carregar .env - CAMINHO CORRIGIDO
 const envPath = path.resolve(__dirname, '../../../.env');
 console.log('🔍 Tentando carregar .env de:', envPath);
-dotenv.config({ path: envPath });
+
+if (fs.existsSync(envPath)) {
+    console.log('✅ Arquivo .env encontrado.');
+    dotenv.config({ path: envPath });
+} else {
+    console.error('❌ Arquivo .env NÃO encontrado no caminho:', envPath);
+}
 
 console.log('📊 Configuração do Banco detectada:');
 console.log(`   Host: ${process.env.DB_HOST}`);

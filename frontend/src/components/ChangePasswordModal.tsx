@@ -1,114 +1,129 @@
+import { useState } from 'react';
+import { toast } from 'react-toastify';
 
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { authApi } from '../services/api.service';
 
-interface ChangePasswordModalProps {
+interface Props {
     isOpen: boolean;
     onClose: () => void;
 }
 
-const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose }) => {
+const ChangePasswordModal = ({ isOpen, onClose }: Props) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const { token } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     if (!isOpen) return null;
 
+    const resetForm = () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
 
-        if (newPassword !== confirmPassword) {
-            setError('A nova senha e a confirmação não conferem.');
+        if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+            toast.error('Preencha todos os campos.');
             return;
         }
 
         if (newPassword.length < 6) {
-            setError('A nova senha deve ter pelo menos 6 caracteres.');
+            toast.error('A nova senha deve ter no mínimo 6 caracteres.');
             return;
         }
 
+        if (newPassword !== confirmPassword) {
+            toast.error('A confirmação da senha não confere.');
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/change-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ currentPassword, newPassword })
-            });
+            await authApi.changePassword(currentPassword, newPassword);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Falha ao alterar senha');
-            }
-
-            setSuccess('Senha alterada com sucesso! Você pode fechar esta janela.');
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            toast.success('Senha alterada com sucesso!');
+            resetForm();
+            onClose();
         } catch (err: any) {
-            setError(err.message);
+            console.error(err);
+            toast.error(err.message || 'Erro ao alterar senha.');
+        } finally {
+            setLoading(false);
         }
     };
 
+    const handleClose = () => {
+        resetForm();
+        onClose();
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
-                <h2 className="text-xl font-bold mb-4">Alterar Senha</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-white w-full max-w-md rounded-xl shadow-lg p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Alterar senha</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                    Informe sua senha atual e defina uma nova senha.
+                </p>
 
-                {error && <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>}
-                {success && <div className="bg-green-100 text-green-700 p-2 rounded mb-4">{success}</div>}
-
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Senha Atual</label>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Senha atual
+                        </label>
                         <input
                             type="password"
-                            className="w-full border rounded px-3 py-2"
+                            className="w-full border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            required
+                            autoComplete="current-password"
                         />
                     </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Nova Senha</label>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Nova senha
+                        </label>
                         <input
                             type="password"
-                            className="w-full border rounded px-3 py-2"
+                            className="w-full border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            required
+                            autoComplete="new-password"
                         />
                     </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Confirmar Nova Senha</label>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Confirmar nova senha
+                        </label>
                         <input
                             type="password"
-                            className="w-full border rounded px-3 py-2"
+                            className="w-full border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
+                            autoComplete="new-password"
                         />
                     </div>
-                    <div className="flex justify-end gap-2">
+
+                    <div className="flex justify-end gap-3 pt-4">
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
+                            onClick={handleClose}
+                            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-2 rounded font-medium"
                         >
-                            Fechar
+                            Cancelar
                         </button>
+
                         <button
                             type="submit"
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                            disabled={loading}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-medium disabled:opacity-50"
                         >
-                            Salvar
+                            {loading ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 </form>

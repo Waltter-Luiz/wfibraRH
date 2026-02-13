@@ -1,49 +1,33 @@
-import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import { PrivateRoute } from './components/PrivateRoute';
-import ChangePasswordModal from './components/ChangePasswordModal';
 import Layout from './components/Layout';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeForm from './pages/EmployeeForm';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 const Dashboard = () => {
-    const { user } = useAuth();
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">Painel</h1>
+      <p className="text-gray-600">
+        Bem-vindo ao sistema Wfibra RH. Utilize o menu lateral para navegar.
+      </p>
+    </div>
+  );
+};
 
-    return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-                {/* <div className="flex gap-2">
-                    Button removed as requested. Moved to Sidebar/Profile.
-                </div> */}
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded shadow border-l-4 border-blue-500">
-                    <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Total Colaboradores</h3>
-                    <p className="text-3xl font-bold text-gray-800">12</p> {/* Mock data for now */}
-                </div>
-                <div className="bg-white p-6 rounded shadow border-l-4 border-green-500">
-                    <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Equipes Ativas</h3>
-                    <p className="text-3xl font-bold text-gray-800">4</p>
-                </div>
-                <div className="bg-white p-6 rounded shadow border-l-4 border-purple-500">
-                    <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Solicitações Pendentes</h3>
-                    <p className="text-3xl font-bold text-gray-800">3</p>
-                </div>
-            </div>
+const HomeRedirect = () => {
+  const { user } = useAuth();
 
-            <p className="text-gray-600">Bem-vindo ao sistema Wfibra RH. Utilize o menu lateral para navegar.</p>
-            
-            <ChangePasswordModal 
-                isOpen={isPasswordModalOpen} 
-                onClose={() => setIsPasswordModalOpen(false)} 
-            />
-        </div>
-    );
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -51,26 +35,41 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+
+          {/* Rota inicial */}
+          <Route path="/" element={<HomeRedirect />} />
+
+          {/* Login */}
           <Route path="/login" element={<Login />} />
-          
-          <Route 
-            path="/*" 
+
+          {/* Rotas protegidas */}
+          <Route
             element={
               <PrivateRoute>
-                <Layout>
-                    <Routes>
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/employees" element={<EmployeeList />} />
-                        <Route path="/employees/new" element={<EmployeeForm />} />
-                        <Route path="/employees/:id" element={<EmployeeForm />} />
-                        <Route path="/" element={<Navigate to="/dashboard" />} />
-                    </Routes>
-                </Layout>
+                <Layout />
               </PrivateRoute>
-            } 
-          />
+            }
+          >
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="colaboradores" element={<EmployeeList />} />
+            <Route path="colaboradores/novo" element={<EmployeeForm />} />
+            <Route path="colaboradores/:id" element={<EmployeeForm />} />
+          </Route>
+
+          {/* Qualquer rota inválida */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
       </Router>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+      />
+
     </AuthProvider>
   );
 }
