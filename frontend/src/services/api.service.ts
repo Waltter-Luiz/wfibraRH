@@ -1,26 +1,67 @@
 /**
- * Serviço centralizado para chamadas à API
+ * Serviço centralizado para chamadas à API (Fetch)
+ * Padrão: baseURL já contém /api
  */
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-if (!API_URL) {
-    throw new Error('VITE_API_URL não foi definido no arquivo .env');
+export interface ApiResponseMeta {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+}
+
+export interface Employee {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    team_id?: number | null;
+    position_id?: number | null;
+    contract_type_id?: number | null;
+    manager_id?: number | null;
+    salary?: number | null;
+    admission_date?: string | null;
+    is_active: number;
+    team_name?: string;
+    position_title?: string;
+}
+
+export interface Team {
+    id: number;
+    name: string;
+}
+
+export interface Position {
+    id: number;
+    title: string;
+}
+
+export interface ContractType {
+    id: number;
+    name: string;
+}
+
+export interface EmployeeListResponse {
+    data: Employee[];
+    meta: ApiResponseMeta;
+}
+
+export interface LoginResponse {
+    token: string;
+    refreshToken: string;
+    user: {
+        id: number;
+        name: string;
+        email: string;
+        role: string;
+        team_id?: number | null;
+    };
 }
 
 interface RequestOptions extends RequestInit {
     requiresAuth?: boolean;
-    params?: Record<string, any>;
-}
-
-export class ApiError extends Error {
-    status: number;
-
-    constructor(message: string, status: number) {
-        super(message);
-        this.name = 'ApiError';
-        this.status = status;
-    }
 }
 
 class ApiService {
@@ -30,39 +71,18 @@ class ApiService {
         this.baseUrl = baseUrl;
     }
 
-    private buildQueryString(params?: Record<string, any>): string {
-        if (!params) return '';
-
-        const query = new URLSearchParams();
-
-        Object.entries(params).forEach(([key, value]) => {
-            if (value === undefined || value === null || value === '') return;
-            query.append(key, String(value));
-        });
-
-        const queryString = query.toString();
-        return queryString ? `?${queryString}` : '';
-    }
-
     private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-        const { requiresAuth = true, params, ...fetchOptions } = options;
+        const { requiresAuth = true, ...fetchOptions } = options;
 
         const headers: Record<string, string> = {
             Accept: 'application/json',
+            ...(fetchOptions.headers as Record<string, string>),
         };
 
-        // Headers extras (se vierem)
-        if (fetchOptions.headers) {
-            const extraHeaders = fetchOptions.headers as Record<string, string>;
-            Object.assign(headers, extraHeaders);
-        }
-
-        // Só adiciona Content-Type se tiver body
-        if (fetchOptions.body) {
+        if (!(fetchOptions.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
         }
 
-        // Token automático
         if (requiresAuth) {
             const token = localStorage.getItem('token');
             if (token) {
@@ -70,195 +90,157 @@ class ApiService {
             }
         }
 
-        const queryString = this.buildQueryString(params);
-        const url = `${this.baseUrl}${endpoint}${queryString}`;
+        const url = `${this.baseUrl}${endpoint}`;
+
+        let response: Response;
 
         try {
-            const response = await fetch(url, {
+            response = await fetch(url, {
                 ...fetchOptions,
                 headers,
             });
-
-            // 401 = sessão expirada
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-
-                throw new ApiError('Sessão expirada. Faça login novamente.', 401);
-            }
-
-            // Parse seguro
-            const contentType = response.headers.get('content-type') || '';
-            const isJson = contentType.includes('application/json');
-
-            let data: any = null;
-
-            if (isJson) {
-                try {
-                    data = await response.json();
-                } catch {
-                    data = null;
-                }
-            } else {
-                data = await response.text();
-            }
-
-            // 403 = proibido (sem permissão)
-            if (response.status === 403) {
-                const message =
-                    data?.message ||
-                    'Você não tem permissão para acessar este recurso.';
-
-                throw new ApiError(message, 403);
-            }
-
-            // Outros erros
-            if (!response.ok) {
-                const message =
-                    data?.message ||
-                    data?.error ||
-                    (typeof data === 'string' && data.trim() !== '' ? data : null) ||
-                    `Erro ${response.status}: ${response.statusText}`;
-
-                throw new ApiError(message, response.status);
-            }
-
-            return data as T;
-        } catch (error: any) {
-            if (error instanceof ApiError) {
-                throw error;
-            }
-
-            if (error instanceof Error) {
-                if (error.message.includes('Failed to fetch')) {
-                    throw new ApiError(
-                        'Não foi possível conectar ao servidor. Verifique se o backend está rodando.',
-                        0
-                    );
-                }
-
-                throw new ApiError(error.message, 0);
-            }
-
-            throw new ApiError('Erro desconhecido ao fazer requisição.', 0);
+        } catch {
+            throw new Error('Não foi possível conectar ao servidor. Verifique se o backend está rodando.');
         }
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+            throw new Error('Sessão expirada. Faça login novamente.');
+        }
+
+        if (!response.ok) {
+            const errorData = isJson ? await response.json() : { message: await response.text() };
+            throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+        }
+
+        if (!isJson) {
+            return {} as T;
+        }
+
+        return await response.json();
     }
 
-    async get<T>(endpoint: string, params?: Record<string, any>, options?: RequestOptions): Promise<T> {
-        return this.request<T>(endpoint, {
-            ...options,
-            method: 'GET',
-            params,
-        });
+    get<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'GET' });
     }
 
-    async post<T>(endpoint: string, body?: any, options?: RequestOptions): Promise<T> {
+    post<T>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
         return this.request<T>(endpoint, {
             ...options,
             method: 'POST',
-            body: body ? JSON.stringify(body) : undefined,
+            body: data ? JSON.stringify(data) : undefined,
         });
     }
 
-    async put<T>(endpoint: string, body?: any, options?: RequestOptions): Promise<T> {
+    put<T>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
         return this.request<T>(endpoint, {
             ...options,
             method: 'PUT',
-            body: body ? JSON.stringify(body) : undefined,
+            body: data ? JSON.stringify(data) : undefined,
         });
     }
 
-    async delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
-        return this.request<T>(endpoint, {
-            ...options,
-            method: 'DELETE',
-        });
+    delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'DELETE' });
     }
 }
 
 export const api = new ApiService(API_URL);
 
 /**
- * Tipagens
- */
-export interface User {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    team_id?: number | null;
-}
-
-export interface LoginResponse {
-    token: string;
-    user: User;
-}
-
-export interface Employee {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    team_name?: string;
-    position_title?: string;
-    team_id?: number | null;
-    position_id?: number | null;
-    contract_type_id?: number | null;
-    salary?: number;
-    admission_date?: string;
-    is_active: number;
-}
-
-export interface EmployeesResponse {
-    data: Employee[];
-    meta?: {
-        totalPages: number;
-        page: number;
-        total: number;
-    };
-}
-
-/**
- * APIs específicas
+ * AUTH
  */
 export const authApi = {
     login: (email: string, password: string) =>
         api.post<LoginResponse>('/login', { email, password }, { requiresAuth: false }),
 
     refreshToken: (refreshToken: string) =>
-        api.post('/refresh-token', { refreshToken }, { requiresAuth: false }),
+        api.post<{ token: string }>('/refresh-token', { refreshToken }, { requiresAuth: false }),
 
     changePassword: (currentPassword: string, newPassword: string) =>
-        api.post('/change-password', { currentPassword, newPassword }),
+        api.post<{ message: string }>('/change-password', { currentPassword, newPassword }),
 
-    me: () => api.get<{ user: User }>('/me'),
+    me: () => api.get('/me'),
 };
 
+/**
+ * EMPLOYEES
+ */
 export const employeeApi = {
-    getAll: (page = 1, search = '') =>
-        api.get<EmployeesResponse>('/employees', { page, search }),
+    getAll: (params?: { page?: number; limit?: number; search?: string }) => {
+        const page = params?.page ?? 1;
+        const limit = params?.limit ?? 10;
+        const search = params?.search ?? '';
 
-    getById: (id: number) =>
-        api.get<Employee>(`/employees/${id}`),
+        return api.get<EmployeeListResponse>(
+            `/employees?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`
+        );
+    },
 
-    create: (data: Partial<Employee> & { password?: string }) =>
-        api.post<Employee>('/employees', data),
+    getById: (id: number) => api.get<Employee>(`/employees/${id}`),
 
-    update: (id: number, data: Partial<Employee> & { password?: string }) =>
-        api.put<Employee>(`/employees/${id}`, data),
+    create: (data: any) => api.post('/employees', data),
 
-    delete: (id: number) =>
-        api.delete(`/employees/${id}`),
+    update: (id: number, data: any) => api.put(`/employees/${id}`, data),
+
+    delete: (id: number) => api.delete(`/employees/${id}`),
 };
 
+/**
+ * TEAMS CRUD
+ */
+export const teamApi = {
+    getAll: () => api.get<Team[]>('/teams'),
+
+    getById: (id: number) => api.get<Team>(`/teams/${id}`),
+
+    create: (data: { name: string }) => api.post('/teams', data),
+
+    update: (id: number, data: { name: string }) => api.put(`/teams/${id}`, data),
+
+    delete: (id: number) => api.delete(`/teams/${id}`),
+};
+
+/**
+ * POSITIONS CRUD
+ */
+export const positionApi = {
+    getAll: () => api.get<Position[]>('/positions'),
+
+    getById: (id: number) => api.get<Position>(`/positions/${id}`),
+
+    create: (data: { title: string }) => api.post('/positions', data),
+
+    update: (id: number, data: { title: string }) => api.put(`/positions/${id}`, data),
+
+    delete: (id: number) => api.delete(`/positions/${id}`),
+};
+
+/**
+ * CONTRACT TYPES CRUD
+ */
+export const contractTypeApi = {
+    getAll: () => api.get<ContractType[]>('/contract-types'),
+
+    getById: (id: number) => api.get<ContractType>(`/contract-types/${id}`),
+
+    create: (data: { name: string }) => api.post('/contract-types', data),
+
+    update: (id: number, data: { name: string }) => api.put(`/contract-types/${id}`, data),
+
+    delete: (id: number) => api.delete(`/contract-types/${id}`),
+};
+
+/**
+ * OPTIONS (Dropdowns)
+ */
 export const optionsApi = {
-    getTeams: () =>
-        api.get<{ id: number; name: string }[]>('/options/teams'),
-
-    getPositions: () =>
-        api.get<{ id: number; title: string }[]>('/options/positions'),
-
-    getContractTypes: () =>
-        api.get<{ id: number; name: string }[]>('/options/contract-types'),
+    getTeams: () => api.get<Team[]>('/options/teams'),
+    getPositions: () => api.get<Position[]>('/options/positions'),
+    getContractTypes: () => api.get<ContractType[]>('/options/contract-types'),
 };

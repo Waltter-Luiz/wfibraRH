@@ -1,3 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+/* Modo compacto global */
+.compact main {
+    padding: 1.2rem !important;
+}
+
+.compact table td,
+.compact table th {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    font-size: 0.85rem !important;
+}
+
+.compact input,
+.compact select,
+.compact button {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    font-size: 0.85rem !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+.password-input::-ms-reveal,
+.password-input::-ms-clear {
+    display: none;
+}

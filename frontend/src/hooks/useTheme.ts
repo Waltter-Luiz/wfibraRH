@@ -2,32 +2,28 @@ import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
-export function useTheme() {
-    const [theme, setTheme] = useState<Theme>("light");
+export const useTheme = () => {
+    const [theme, setThemeState] = useState<Theme>("light");
 
     useEffect(() => {
-        const storedTheme = localStorage.getItem("theme") as Theme | null;
-
-        if (storedTheme) {
-            setTheme(storedTheme);
-            document.documentElement.classList.toggle("dark", storedTheme === "dark");
-            return;
-        }
-
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const systemTheme: Theme = prefersDark ? "dark" : "light";
-
-        setTheme(systemTheme);
-        document.documentElement.classList.toggle("dark", systemTheme === "dark");
+        const savedTheme = (localStorage.getItem("theme") as Theme) || "light";
+        setTheme(savedTheme);
     }, []);
 
-    const toggleTheme = () => {
-        const newTheme: Theme = theme === "dark" ? "light" : "dark";
-
-        setTheme(newTheme);
+    const setTheme = (newTheme: Theme) => {
+        setThemeState(newTheme);
         localStorage.setItem("theme", newTheme);
-        document.documentElement.classList.toggle("dark", newTheme === "dark");
+
+        if (newTheme === "dark") {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
     };
 
-    return { theme, toggleTheme };
-}
+    const toggleTheme = () => {
+        setTheme(theme === "dark" ? "light" : "dark");
+    };
+
+    return { theme, toggleTheme, setTheme };
+};

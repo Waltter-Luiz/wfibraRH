@@ -5,8 +5,14 @@ import { PrivateRoute } from './components/PrivateRoute';
 import Layout from './components/Layout';
 import EmployeeList from './pages/EmployeeList';
 import EmployeeForm from './pages/EmployeeForm';
+import TeamsList from './pages/TeamsList';
+import TeamForm from './pages/TeamForm';
+import PositionsList from './pages/PositionsList';
+import PositionForm from './pages/PositionForm';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ContractTypesList from './pages/ContractTypesList';
+import ContractTypeForm from './pages/ContractTypeForm';
 
 
 const Dashboard = () => {
@@ -54,6 +60,17 @@ function App() {
             <Route path="colaboradores" element={<EmployeeList />} />
             <Route path="colaboradores/novo" element={<EmployeeForm />} />
             <Route path="colaboradores/:id" element={<EmployeeForm />} />
+            <Route path="equipes" element={<TeamsList />} />
+            <Route path="equipes/nova" element={<TeamForm />} />
+            <Route path="equipes/:id" element={<TeamForm />} />
+            <Route path="cargos" element={<PositionsList />} />
+            <Route path="cargos/novo" element={<PositionForm />} />
+            <Route path="cargos/:id" element={<PositionForm />} />
+            <Route path="tipos-contrato" element={<ContractTypesList />} />
+            <Route path="tipos-contrato/novo" element={<ContractTypeForm />} />
+            <Route path="tipos-contrato/:id" element={<ContractTypeForm />} />
+
+
           </Route>
 
           {/* Qualquer rota inválida */}

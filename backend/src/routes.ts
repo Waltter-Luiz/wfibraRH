@@ -4,6 +4,7 @@ import { login, changePassword, refreshToken } from './controllers/auth.controll
 import { authenticateToken, requireRole } from './middlewares/auth.middleware';
 import { validate } from './middlewares/validate.middleware';
 import { loginLimiter } from './middlewares/rateLimiter.middleware';
+
 import {
     getEmployees,
     getEmployeeById,
@@ -21,6 +22,28 @@ import {
     closeMonthlyBalance
 } from './controllers/timeRecord.controller';
 import {
+    getTeams,
+    getTeamById,
+    createTeam,
+    updateTeam,
+    deleteTeam
+} from './controllers/team.controller';
+import {
+    getPositions,
+    getPositionById,
+    createPosition,
+    updatePosition,
+    deletePosition
+} from './controllers/position.controller';
+import {
+    getContractTypes,
+    getContractTypeById,
+    createContractType,
+    updateContractType,
+    deleteContractType
+} from './controllers/contractType.controller';
+
+import {
     getMyBalance,
     getEmployeeBalance,
     getMyEvolution,
@@ -30,6 +53,7 @@ import {
     getManagerDashboard,
     getAuditLogs
 } from './controllers/dashboard.controller';
+
 import { loginSchema, changePasswordSchema, refreshTokenSchema } from './schemas/auth.schema';
 import { createEmployeeSchema, updateEmployeeSchema } from './schemas/employee.schema';
 import { createTimeRecordSchema, approveRejectSchema, closeMonthlyBalanceSchema } from './schemas/timeRecord.schema';
@@ -70,6 +94,30 @@ router.get('/dashboard/team/:teamId', authenticateToken, requireRole(['MANAGER',
 router.get('/dashboard/director', authenticateToken, requireRole(['DIRECTOR', 'ADMIN']), getDirectorDashboard);
 router.get('/dashboard/manager', authenticateToken, requireRole(['MANAGER', 'ADMIN']), getManagerDashboard);
 router.get('/dashboard/audit-logs', authenticateToken, requireRole(['RH', 'DIRECTOR', 'ADMIN']), getAuditLogs);
+
+// --- Teams Routes ---
+router.get('/teams', authenticateToken, requireRole(['ADMIN', 'RH']), getTeams);
+router.get('/teams/:id', authenticateToken, requireRole(['ADMIN', 'RH']), getTeamById);
+router.post('/teams', authenticateToken, requireRole(['ADMIN', 'RH']), createTeam);
+router.put('/teams/:id', authenticateToken, requireRole(['ADMIN', 'RH']), updateTeam);
+router.delete('/teams/:id', authenticateToken, requireRole(['ADMIN', 'RH']), deleteTeam);
+
+// --- Positions Routes ---
+router.get('/positions', authenticateToken, requireRole(['ADMIN', 'RH']), getPositions);
+router.get('/positions/:id', authenticateToken, requireRole(['ADMIN', 'RH']), getPositionById);
+router.post('/positions', authenticateToken, requireRole(['ADMIN', 'RH']), createPosition);
+router.put('/positions/:id', authenticateToken, requireRole(['ADMIN', 'RH']), updatePosition);
+router.delete('/positions/:id', authenticateToken, requireRole(['ADMIN', 'RH']), deletePosition);
+
+// --- Contract Types Routes ---
+router.get('/contract-types', authenticateToken, requireRole(['ADMIN', 'RH']), getContractTypes);
+router.get('/contract-types/:id', authenticateToken, requireRole(['ADMIN', 'RH']), getContractTypeById);
+router.post('/contract-types', authenticateToken, requireRole(['ADMIN', 'RH']), createContractType);
+router.put('/contract-types/:id', authenticateToken, requireRole(['ADMIN', 'RH']), updateContractType);
+router.delete('/contract-types/:id', authenticateToken, requireRole(['ADMIN', 'RH']), deleteContractType);
+
+
+
 
 // --- Options Routes (for dropdowns) ---
 router.get('/options/teams', authenticateToken, async (req, res) => {

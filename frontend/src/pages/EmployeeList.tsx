@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Pencil, UserX } from 'lucide-react';
 
 import { employeeApi, Employee } from '../services/api.service';
 
@@ -19,7 +20,11 @@ const EmployeeList = () => {
         setError('');
 
         try {
-            const response = await employeeApi.getAll(page, search);
+            const response = await employeeApi.getAll({
+                page,
+                limit: 10,
+                search,
+            });
 
             setEmployees(response.data || []);
             setTotalPages(response.meta?.totalPages || 1);
@@ -29,8 +34,9 @@ const EmployeeList = () => {
             setEmployees([]);
             setTotalPages(1);
 
-            setError(err.message || 'Erro ao buscar colaboradores.');
-            toast.error(err.message || 'Erro ao buscar colaboradores.');
+            const msg = err.message || 'Erro ao buscar colaboradores.';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -46,9 +52,12 @@ const EmployeeList = () => {
         fetchEmployees();
     };
 
-    const handleDelete = async (id: number) => {
-        const confirmDelete = confirm('Tem certeza que deseja desativar este colaborador?');
-        if (!confirmDelete) return;
+    const handleDisable = async (id: number) => {
+        const confirmDisable = confirm(
+            'Tem certeza que deseja desativar este colaborador? Ele não poderá mais acessar o sistema.'
+        );
+
+        if (!confirmDisable) return;
 
         try {
             await employeeApi.delete(id);
@@ -67,7 +76,7 @@ const EmployeeList = () => {
 
                 <Link
                     to="/colaboradores/novo"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition"
                 >
                     + Novo colaborador
                 </Link>
@@ -89,7 +98,10 @@ const EmployeeList = () => {
                         onChange={(e) => setSearch(e.target.value)}
                     />
 
-                    <button type="submit" className="bg-slate-700 text-white px-4 py-2 rounded">
+                    <button
+                        type="submit"
+                        className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded transition"
+                    >
                         Buscar
                     </button>
                 </form>
@@ -99,12 +111,24 @@ const EmployeeList = () => {
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50 border-b">
                         <tr>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Nome</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">E-mail</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Cargo</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Equipe</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-right">Ações</th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                                Nome
+                            </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                                E-mail
+                            </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                                Cargo
+                            </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                                Equipe
+                            </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">
+                                Status
+                            </th>
+                            <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase text-right">
+                                Ações
+                            </th>
                         </tr>
                     </thead>
 
@@ -123,10 +147,18 @@ const EmployeeList = () => {
                             </tr>
                         ) : (
                             employees.map((emp) => (
-                                <tr key={emp.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{emp.name}</td>
-                                    <td className="px-6 py-4 text-gray-500">{emp.email}</td>
-                                    <td className="px-6 py-4 text-gray-500">{emp.position_title || '-'}</td>
+                                <tr key={Number(emp.id)} className="hover:bg-gray-50 transition">
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        {emp.name}
+                                    </td>
+
+                                    <td className="px-6 py-4 text-gray-500">
+                                        {emp.email}
+                                    </td>
+
+                                    <td className="px-6 py-4 text-gray-500">
+                                        {emp.position_title || '-'}
+                                    </td>
 
                                     <td className="px-6 py-4 text-gray-500">
                                         <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
@@ -136,28 +168,42 @@ const EmployeeList = () => {
 
                                     <td className="px-6 py-4">
                                         {emp.is_active ? (
-                                            <span className="text-green-600 text-sm font-semibold">Ativo</span>
+                                            <span className="text-green-600 text-sm font-semibold">
+                                                Ativo
+                                            </span>
                                         ) : (
-                                            <span className="text-red-500 text-sm">Inativo</span>
+                                            <span className="text-red-500 text-sm">
+                                                Inativo
+                                            </span>
                                         )}
                                     </td>
 
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        <Link
-                                            to={`/colaboradores/${emp.id}`}
-                                            className="text-blue-600 hover:text-blue-800 font-medium"
-                                        >
-                                            Editar
-                                        </Link>
-
-                                        {emp.is_active === 1 && (
-                                            <button
-                                                onClick={() => handleDelete(emp.id)}
-                                                className="text-red-600 hover:text-red-800 font-medium"
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Link
+                                                to={`/colaboradores/${Number(emp.id)}`}
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
+                                                           bg-blue-50 text-blue-700 border border-blue-200
+                                                           hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm hover:shadow-md"
+                                                title="Editar colaborador"
                                             >
-                                                Desativar
-                                            </button>
-                                        )}
+                                                <Pencil size={16} />
+                                                Editar
+                                            </Link>
+
+                                            {emp.is_active === 1 && (
+                                                <button
+                                                    onClick={() => handleDisable(Number(emp.id))}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
+                                                               bg-red-50 text-red-700 border border-red-200
+                                                               hover:bg-red-100 hover:border-red-300 transition-all shadow-sm hover:shadow-md"
+                                                    title="Desativar colaborador"
+                                                >
+                                                    <UserX size={16} />
+                                                    Desativar
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))
